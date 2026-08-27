@@ -32,10 +32,26 @@ LINE = (40, 15, 55)
 
 # View-orientation dims (landscape) — same trick as barthal: draw in the
 # orientation you look at, rotate into the panel's native portrait frame
-# only at the very end. Not yet confirmed against a real photo (see
-# gedaechtnis.md) — barthal needed three passes against real hardware
-# before corner brackets/scanlines sat right; expect the same here.
+# only at the very end. First real-hardware pass (27.08.2026, photo in
+# kraken-arche/gedaechtnis.md) confirmed the layout — no collisions, face
+# stayed hidden — but the panel looked flat/empty compared to barthal's
+# Cyberdeck skin. This pass adds the texture barthal has (scanlines, dot
+# grid) that was missing from the first cut.
 VIEW_WIDTH, VIEW_HEIGHT = 280, 240
+
+# Precomputed once at import time, not per frame — same reasoning as
+# barthal's lcd_bild.py: the pattern never changes, no need to redraw it
+# on every render() call.
+_SCANLINES = Image.new("RGBA", (VIEW_WIDTH, VIEW_HEIGHT), (0, 0, 0, 0))
+_scanlines_draw = ImageDraw.Draw(_SCANLINES)
+for _y in range(0, VIEW_HEIGHT, 2):
+    _scanlines_draw.line([(0, _y), (VIEW_WIDTH, _y)], fill=(0, 0, 0, 28))
+
+_RASTER = Image.new("RGBA", (VIEW_WIDTH, VIEW_HEIGHT), (0, 0, 0, 0))
+_raster_draw = ImageDraw.Draw(_RASTER)
+for _x in range(0, VIEW_WIDTH, 10):
+    for _y in range(0, VIEW_HEIGHT, 10):
+        _raster_draw.point((_x, _y), fill=(220, 60, 255, 30))
 
 
 def _rotation() -> int:
@@ -116,9 +132,14 @@ class Whisplay5teve(Whisplay):
     def render(self, canvas):
         colored = ImageOps.colorize(
             canvas.convert('L'), black=GROUND, white=ACCENT
-        ).convert('RGB')
+        ).convert('RGBA')
+        # Raster first (under the text/brackets, dim enough to stay a
+        # texture and not a distraction), scanlines last (like a pane of
+        # glass over everything else) — same layering barthal uses.
+        colored = Image.alpha_composite(colored, _RASTER)
         d = ImageDraw.Draw(colored)
         _corner_brackets(d, VIEW_WIDTH, VIEW_HEIGHT)
+        colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
         )
