@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import re
+import subprocess
 
 from PIL import Image, ImageDraw, ImageOps
 
@@ -111,6 +113,27 @@ def _akku_geschaetzt(pfad: str = _AKKU_DATEI):
     return max(0.0, min(100.0, anteil * 100.0))
 
 
+# Owner requirement (kraken-arche/gedaechtnis.md, 27.08.2026): "im
+# Managed-Mode muss wie bei barthalomeus die IP stehen, damit man weiss,
+# dass er connected ist" - port of barthal/wlan_modus.py's ip_adresse():
+# a single glance at `ip -4 -o addr show`, no DHCP wait, since this
+# renders every frame. Empty in monitor mode by design - wlan0 itself
+# has no IP once it's unmanaged and pulled into wlan0mon.
+_IP_MUSTER = re.compile(r"inet (\d+\.\d+\.\d+\.\d+)")
+
+
+def _ip_adresse(iface: str = "wlan0"):
+    try:
+        ausgabe = subprocess.run(
+            ["ip", "-4", "-o", "addr", "show", iface],
+            capture_output=True, text=True, timeout=1,
+        ).stdout
+    except Exception:
+        return None
+    treffer = _IP_MUSTER.search(ausgabe)
+    return treffer.group(1) if treffer else None
+
+
 def _corner_brackets(d, width, height, length=14, thickness=2, margin=20):
     for x, y, dx, dy in (
         (margin, margin, 1, 1),
@@ -177,6 +200,9 @@ class Whisplay5teve(Whisplay):
         akku = _akku_geschaetzt()
         akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
         d.text((130, 212), akku_text, font=fonts.Small, fill=ACCENT)
+        ip = _ip_adresse()
+        if ip:
+            d.text((130, 223), ip, font=fonts.Small, fill=ACCENT)
         colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
