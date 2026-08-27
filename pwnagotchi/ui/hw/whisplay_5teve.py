@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -76,6 +77,40 @@ def _rotation() -> int:
     return deg
 
 
+# Owner requirement (kraken-arche/gedaechtnis.md, 27.08.2026): "der
+# Akku-Lerner bleibt eigenstaendig bestehen, samt seiner Anzeige" - the
+# same barthal-akku-lerner.service (bob's own systemd unit, unrelated to
+# 5teve/pwnagotchi) keeps writing this file regardless of which persona
+# owns the display; 5teve just needs to read and show it too, so that
+# switching personas doesn't lose the battery-cycle learning progress
+# from view. Overridable the same way barthal's BARTHAL_AKKU_DATEI is.
+_AKKU_DATEI = os.environ.get(
+    "STEVE_AKKU_DATEI", "/home/bob/barthalomeus/akku_lernen.json")
+
+
+def _akku_geschaetzt(pfad: str = _AKKU_DATEI):
+    """Port of barthal/akku_lernen.py's geschaetzte_energie() - same file,
+    same math (0..100 from the learned cycle history, or None before the
+    first completed cycle). Not imported directly: barthal lives in a
+    separate repo, this is the whole function, small enough to duplicate
+    rather than couple the two repos at runtime."""
+    try:
+        with open(pfad) as f:
+            stand = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    zyklen = stand.get("zyklen") or []
+    if not zyklen:
+        return None
+    erwartet = sum(zyklen) / len(zyklen)
+    if erwartet <= 0:
+        return None
+    with open("/proc/uptime") as f:
+        jetzt = float(f.readline().split()[0])
+    anteil = 1.0 - (jetzt / erwartet)
+    return max(0.0, min(100.0, anteil * 100.0))
+
+
 def _corner_brackets(d, width, height, length=14, thickness=2, margin=20):
     for x, y, dx, dy in (
         (margin, margin, 1, 1),
@@ -139,6 +174,9 @@ class Whisplay5teve(Whisplay):
         colored = Image.alpha_composite(colored, _RASTER)
         d = ImageDraw.Draw(colored)
         _corner_brackets(d, VIEW_WIDTH, VIEW_HEIGHT)
+        akku = _akku_geschaetzt()
+        akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
+        d.text((130, 212), akku_text, font=fonts.Small, fill=ACCENT)
         colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
