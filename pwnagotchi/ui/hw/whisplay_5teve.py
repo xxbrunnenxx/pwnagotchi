@@ -134,6 +134,25 @@ def _ip_adresse(iface: str = "wlan0"):
     return treffer.group(1) if treffer else None
 
 
+def _kopfueber_kompensiert(zielbild, xy, text, font, fill):
+    """Zeichnet Text vorab um 180 Grad gedreht in ein kleines Hilfsbild und
+    fuegt es an `xy` ein - kompensiert einen nicht verstandenen Effekt, der
+    ausgerechnet die BAKED/IP-Textausgaben (nicht aber pwnagotchi's eigene
+    Widgets: 5teve, UP, PWND, AUTO) auf dem echten Geraet kopfueber
+    erscheinen laesst, obwohl exakt derselbe Rotations-/Farb-Code fuer alle
+    gilt. Empirisch ermittelt (27.08.2026, Fotobeleg neu2.jpg und
+    immernochnicht.jpg in kraken-arche/gedaechtnis.md), Ursache ungeklaert -
+    siehe Kommentar in render(). Analog zur Y-Koordinaten-Spiegelung dort:
+    Symptom kompensiert, nicht die Ursache behoben."""
+    bbox = font.getbbox(text)
+    breite = bbox[2] - bbox[0] + 2
+    hoehe = bbox[3] - bbox[1] + 2
+    hilfsbild = Image.new("RGBA", (breite, hoehe), (0, 0, 0, 0))
+    ImageDraw.Draw(hilfsbild).text((-bbox[0], -bbox[1]), text, font=font, fill=fill)
+    hilfsbild = hilfsbild.rotate(180)
+    zielbild.paste(hilfsbild, xy, hilfsbild)
+
+
 def _corner_brackets(d, width, height, length=14, thickness=2, margin=20):
     for x, y, dx, dy in (
         (margin, margin, 1, 1),
@@ -210,10 +229,10 @@ class Whisplay5teve(Whisplay):
         # blind vertrauen.
         akku = _akku_geschaetzt()
         akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
-        d.text((130, VIEW_HEIGHT - 212), akku_text, font=fonts.Small, fill=ACCENT)
+        _kopfueber_kompensiert(colored, (130, VIEW_HEIGHT - 212), akku_text, fonts.Small, ACCENT)
         ip = _ip_adresse()
         if ip:
-            d.text((130, VIEW_HEIGHT - 223), ip, font=fonts.Small, fill=ACCENT)
+            _kopfueber_kompensiert(colored, (130, VIEW_HEIGHT - 223), ip, fonts.Small, ACCENT)
         colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
