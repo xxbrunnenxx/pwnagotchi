@@ -44,7 +44,13 @@ def _rotation() -> int:
     do — Conflicts= guarantees that — so 5teve reads its own.
 
     Env var names can't start with a digit (invalid in POSIX shells), so
-    this is `STEVE_DREHUNG`, not `5TEVE_DREHUNG`."""
+    this is `STEVE_DREHUNG`, not `5TEVE_DREHUNG`.
+
+    Called once from `__init__` and cached — `render()` runs in
+    pwnagotchi's renderer thread with no exception handling around it
+    (`ui/display.py`'s `_render_thread`), so raising from inside render()
+    on every single frame would permanently kill the display after the
+    first bad value instead of failing once, loudly, at startup."""
     deg = int(os.environ.get("STEVE_DREHUNG", 90))
     if deg not in (90, 270):
         raise ValueError(
@@ -69,6 +75,17 @@ class Whisplay5teve(Whisplay):
     def __init__(self, config):
         super(Whisplay5teve, self).__init__(config)
         self.name = 'whisplay_5teve'
+        # Validate/cache once at startup, not on every render() call — see
+        # _rotation()'s docstring.
+        self._rotation_deg = _rotation()
+        # Setting self._layout['face'] does nothing: view.py builds the
+        # face widget from config['ui']['faces']['position_x'/'position_y']
+        # directly, not from the display's layout dict. Moving it off the
+        # 280x240 canvas is the only way to actually suppress it — 5teve's
+        # HUD has no room for pwnagotchi's ASCII mascot, it would overlap
+        # the channel/aps labels at y=34.
+        config['ui']['faces']['position_x'] = -1000
+        config['ui']['faces']['position_y'] = -1000
 
     def layout(self):
         fonts.setup(10, 9, 10, 18, 20, 9)
@@ -103,6 +120,6 @@ class Whisplay5teve(Whisplay):
         d = ImageDraw.Draw(colored)
         _corner_brackets(d, VIEW_WIDTH, VIEW_HEIGHT)
         rotated = colored.transpose(
-            Image.ROTATE_270 if _rotation() == 90 else Image.ROTATE_90
+            Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
         )
         super(Whisplay5teve, self).render(rotated)
