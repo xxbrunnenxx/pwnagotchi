@@ -227,12 +227,21 @@ class Whisplay5teve(Whisplay):
         # Ursache. Falls der Fehler in anderer Form wiederkommt (z.B. nach
         # Layout-Aenderung), nochmal von vorn pruefen statt dieser Zeile
         # blind vertrauen.
+        # Eigene Reihe unter shakes/mode (die liegen bei y=210) - naechster
+        # Fund nach der Rotations-/Positions-Korrektur (27.08.2026, gleiche
+        # Sitzung): Orientierung/Position stimmten, aber BAKED ragte in
+        # "PWND 0 (00)" hinein, weil beide praktisch auf derselben Zeile
+        # lagen (210 vs. 212). Jetzt eine echte zweite Zeile bei y=224,
+        # BAKED links (x=38, unter PWND) und IP rechts daneben (x=140) -
+        # beide Strings kurz genug, um nicht zu kollidieren, und y=224
+        # bleibt innerhalb der 240px Canvashoehe mit Rand zu den unteren
+        # Eckklammern (siehe _corner_brackets, margin=20).
         akku = _akku_geschaetzt()
         akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
-        _kopfueber_kompensiert(colored, (130, VIEW_HEIGHT - 212), akku_text, fonts.Small, ACCENT)
+        _kopfueber_kompensiert(colored, (38, VIEW_HEIGHT - 224), akku_text, fonts.Small, ACCENT)
         ip = _ip_adresse()
         if ip:
-            _kopfueber_kompensiert(colored, (130, VIEW_HEIGHT - 223), ip, fonts.Small, ACCENT)
+            _kopfueber_kompensiert(colored, (140, VIEW_HEIGHT - 224), ip, fonts.Small, ACCENT)
         colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
