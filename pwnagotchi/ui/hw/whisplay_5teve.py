@@ -197,20 +197,23 @@ class Whisplay5teve(Whisplay):
         colored = Image.alpha_composite(colored, _RASTER)
         d = ImageDraw.Draw(colored)
         _corner_brackets(d, VIEW_WIDTH, VIEW_HEIGHT)
-        # Wieder aktiviert (naechste Sitzung, 27.08.2026 spaeter Abend):
-        # Software-Nachbau von render() (ausserhalb des Geraets, ohne
-        # Hardware-Zugriff) zeigt Kopfzeile und diesen Text bei derselben
-        # Drehung konsistent und ueberlappungsfrei - kein Rotationsfehler
-        # im Code auffindbar. Wahrscheinlichste Erklaerung fuer das
-        # verdrehte Foto: der Dienst lief beim letzten Test noch mit der
-        # alten STEVE_DREHUNG-Umgebung, bevor der 270-Grad-Fix per Neustart
-        # griff. Naechster echter Beleg: frisches Foto vom Geraet.
+        # Y-Koordinaten empirisch an der Bildmitte gespiegelt (27.08.2026,
+        # spaete Sitzung). Belegfoto (kraken-arche/gedaechtnis.md, neu2.jpg
+        # vom echten Dienst, nicht vom Diagnoseskript): Kopfzeile/Fusszeile/
+        # Eckklammern sitzen exakt da, wo layout() sie hinlegt - nur diese
+        # zwei d.text()-Aufrufe erschienen oben/kopfueber statt unten,
+        # ziemlich genau bei (VIEW_HEIGHT - y) statt y. Ursache dafuer NICHT
+        # gefunden (Rotationsformel, MADCTL, STEVE_DREHUNG sind fuer alle
+        # Elemente identisch) - das hier behebt das Symptom, nicht die
+        # Ursache. Falls der Fehler in anderer Form wiederkommt (z.B. nach
+        # Layout-Aenderung), nochmal von vorn pruefen statt dieser Zeile
+        # blind vertrauen.
         akku = _akku_geschaetzt()
         akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
-        d.text((130, 212), akku_text, font=fonts.Small, fill=ACCENT)
+        d.text((130, VIEW_HEIGHT - 212), akku_text, font=fonts.Small, fill=ACCENT)
         ip = _ip_adresse()
         if ip:
-            d.text((130, 223), ip, font=fonts.Small, fill=ACCENT)
+            d.text((130, VIEW_HEIGHT - 223), ip, font=fonts.Small, fill=ACCENT)
         colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
