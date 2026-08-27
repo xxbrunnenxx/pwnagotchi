@@ -197,12 +197,19 @@ class Whisplay5teve(Whisplay):
         colored = Image.alpha_composite(colored, _RASTER)
         d = ImageDraw.Draw(colored)
         _corner_brackets(d, VIEW_WIDTH, VIEW_HEIGHT)
-        akku = _akku_geschaetzt()
-        akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
-        d.text((130, 212), akku_text, font=fonts.Small, fill=ACCENT)
-        ip = _ip_adresse()
-        if ip:
-            d.text((130, 223), ip, font=fonts.Small, fill=ACCENT)
+        # TEMPORAER DEAKTIVIERT (27.08.2026, spaet): am echten Geraet
+        # erschien dieser Text verkehrt herum UND oben ueberlappend mit
+        # der Kopfzeile, obwohl er ueber denselben `d`/`colored`-Pfad wie
+        # die (nachweislich korrekt sitzenden) Eckklammern laeuft - nicht
+        # erklaerbar ohne frischen Blick, siehe Foto in kraken-arche/
+        # gedaechtnis.md. Funktionen bleiben stehen, nur die Aufrufe hier
+        # sind aus, bis das untersucht ist.
+        # akku = _akku_geschaetzt()
+        # akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
+        # d.text((130, 212), akku_text, font=fonts.Small, fill=ACCENT)
+        # ip = _ip_adresse()
+        # if ip:
+        #     d.text((130, 223), ip, font=fonts.Small, fill=ACCENT)
         colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
