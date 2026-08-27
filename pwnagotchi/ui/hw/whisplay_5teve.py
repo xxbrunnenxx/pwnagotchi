@@ -143,23 +143,28 @@ class Whisplay5teve(Whisplay):
         # 27.08.2026: BAKED/IP kollidierten vorher mit PWND/AUTO, weil
         # beide praktisch dieselbe y-Koordinate hatten). Jede Zeile hat
         # jetzt klar eigenen Raum, keine Linien/Texturen dazwischen.
-        self._layout['name'] = (4, 4)
+        # x=20 links, nicht x=4: Eichbild (kraken-arche/gedaechtnis.md)
+        # zeigt runde Ecken am Panel - Eck-Farbfelder kamen als Viertel-
+        # kreis an, nicht als volles Quadrat. x=20 ist der Wert, der in
+        # jedem bisherigen Foto nachweislich nie beschnitten war (alte
+        # Eckklammern nutzten dieselbe margin=20).
+        self._layout['name'] = (20, 4)
         self._layout['uptime'] = (180, 4)
         self._layout['line1'] = [0, 0, 0, 0]  # kein sichtbarer Strich mehr
-        self._layout['channel'] = (4, 40)
-        self._layout['aps'] = (90, 40)
+        self._layout['channel'] = (20, 40)
+        self._layout['aps'] = (100, 40)
         self._layout['status'] = {
-            'pos': (4, 76),
+            'pos': (20, 76),
             'font': fonts.status_font(fonts.Medium),
-            'max': 26,
+            'max': 24,
         }
         self._layout['line2'] = [0, 0, 0, 0]
         self._layout['friend_face'] = (0, 92)
         self._layout['friend_name'] = (40, 94)
-        self._layout['shakes'] = (4, 160)
+        self._layout['shakes'] = (20, 160)
         self._layout['mode'] = (180, 160)
-        self._layout['akku'] = (4, 200)
-        self._layout['ip'] = (120, 200)
+        self._layout['akku'] = (20, 200)
+        self._layout['ip'] = (130, 200)
         return self._layout
 
     def render(self, canvas):
