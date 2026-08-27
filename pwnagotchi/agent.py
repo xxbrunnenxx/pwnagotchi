@@ -206,7 +206,7 @@ class Agent(Client, Automata, AsyncAdvertiser):
 
     def get_access_points(self):
         whitelist = self._config['main']['whitelist']
-        # target_whitelist (BRONCO addition, opt-in): unlike `whitelist` above
+        # target_whitelist (5teve addition, opt-in): unlike `whitelist` above
         # (a denylist - protects listed networks, attacks everything else),
         # this is an ALLOWLIST - when non-empty, ONLY these networks are ever
         # touched, everything else is ignored no matter what's in range.

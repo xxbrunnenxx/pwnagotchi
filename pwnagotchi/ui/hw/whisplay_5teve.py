@@ -8,10 +8,10 @@ from pwnagotchi.ui.hw.whisplay import Whisplay
 
 # Same physical board as pwnagotchi's stock `whisplay` driver (PiSugar
 # Whisplay HAT, ST7789 240x280 SPI) and the same board barthal(omeus) speaks
-# to from its own repo (github.com/xxbrunnenxx/barthalomeus). BRONCO and
+# to from its own repo (github.com/xxbrunnenxx/barthalomeus). 5teve and
 # barthal never run at the same time (systemd Conflicts=), so there's
 # exactly one consumer of the panel at any moment — this driver only adds
-# BRONCO's own skin on top of the stock driver's hardware talk.
+# 5teve's own skin on top of the stock driver's hardware talk.
 #
 # pwnagotchi's core renders every display in 1-bit black/white
 # (pwnagotchi/ui/view.py, `Image.new('1', ...)`) — there is no per-pixel
@@ -41,11 +41,14 @@ VIEW_WIDTH, VIEW_HEIGHT = 280, 240
 def _rotation() -> int:
     """Degrees clockwise into the panel frame. Same env var as barthal
     (`BARTHAL_DREHUNG`) would collide if both ran at once, but they never
-    do — Conflicts= guarantees that — so BRONCO reads its own."""
-    deg = int(os.environ.get("BRONCO_DREHUNG", 90))
+    do — Conflicts= guarantees that — so 5teve reads its own.
+
+    Env var names can't start with a digit (invalid in POSIX shells), so
+    this is `STEVE_DREHUNG`, not `5TEVE_DREHUNG`."""
+    deg = int(os.environ.get("STEVE_DREHUNG", 90))
     if deg not in (90, 270):
         raise ValueError(
-            f"BRONCO_DREHUNG={deg} not supported — layout is landscape, "
+            f"STEVE_DREHUNG={deg} not supported — layout is landscape, "
             "so only 90 or 270 make sense."
         )
     return deg
@@ -62,16 +65,16 @@ def _corner_brackets(d, width, height, length=14, thickness=2, margin=20):
         d.line([(x, y), (x, y + dy * length)], fill=ACCENT, width=thickness)
 
 
-class WhisplayBronco(Whisplay):
+class Whisplay5teve(Whisplay):
     def __init__(self, config):
-        super(WhisplayBronco, self).__init__(config)
-        self.name = 'whisplay_bronco'
+        super(Whisplay5teve, self).__init__(config)
+        self.name = 'whisplay_5teve'
 
     def layout(self):
         fonts.setup(10, 9, 10, 18, 20, 9)
         self._layout['width'] = VIEW_WIDTH
         self._layout['height'] = VIEW_HEIGHT
-        # No face — same choice barthal made for its infopanel; BRONCO's
+        # No face — same choice barthal made for its infopanel; 5teve's
         # HUD reads as a dashboard, not a mascot. `face` position is
         # unused by pwnagotchi core when no face widget is added, but the
         # base layout dict expects a value.
@@ -102,4 +105,4 @@ class WhisplayBronco(Whisplay):
         rotated = colored.transpose(
             Image.ROTATE_270 if _rotation() == 90 else Image.ROTATE_90
         )
-        super(WhisplayBronco, self).render(rotated)
+        super(Whisplay5teve, self).render(rotated)

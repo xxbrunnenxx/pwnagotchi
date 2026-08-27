@@ -221,8 +221,8 @@ def load_config(args):
     elif config['ui']['display']['type'] == 'whisplay':
         config['ui']['display']['type'] = 'whisplay'
 
-    elif config['ui']['display']['type'] == 'whisplay_bronco':
-        config['ui']['display']['type'] = 'whisplay_bronco'
+    elif config['ui']['display']['type'] == 'whisplay_5teve':
+        config['ui']['display']['type'] = 'whisplay_5teve'
 
     elif config['ui']['display']['type'] in ('wavesharelcd0in96', 'wslcd0in96'):
         config['ui']['display']['type'] = 'wavesharelcd0in96'
