@@ -1,5 +1,6 @@
 """Channel and interaction statistics tracking."""
 
+import random
 import time
 import threading
 import logging
@@ -33,6 +34,46 @@ class ChannelStatistics:
             assocs = self.chistos.get("Associations", {}).get(channel, 0)
             scans = self.histogram.get(channel, 0)
         return (handshakes * 10 + deauths * 1 + assocs * 2) / max(1, scans)
+
+    def unscanned_count(self):
+        """Locked read of how many channels are still unscanned."""
+        with self._lock:
+            return len(self.unscanned_channels)
+
+    def set_unscanned_channels(self, channels):
+        """Replace the unscanned-channel pool (repopulation), under lock."""
+        with self._lock:
+            self.unscanned_channels = list(channels)
+
+    def pop_random_unscanned(self):
+        """Remove and return one random unscanned channel, or None if empty.
+
+        Locked: called from select_channels() (epoch/recon thread) while
+        update_active_channels() (bettercap event-callback thread) mutates
+        the same list — without the lock this was a TOCTOU race.
+        """
+        with self._lock:
+            if not self.unscanned_channels:
+                return None
+            ch = random.choice(self.unscanned_channels)
+            self.unscanned_channels.remove(ch)
+            return ch
+
+    def pop_weighted_unscanned(self):
+        """Remove and return one unscanned channel, weighted by channel_score.
+
+        Locked for the same reason as pop_random_unscanned(); channel_score()
+        re-acquiring the lock is safe since it's an RLock.
+        """
+        with self._lock:
+            if not self.unscanned_channels:
+                return None
+            pool = list(self.unscanned_channels)
+            # small floor so unproven channels can still be picked occasionally
+            weights = [max(self.channel_score(ch), 0.01) for ch in pool]
+            ch = random.choices(pool, weights=weights, k=1)[0]
+            self.unscanned_channels.remove(ch)
+            return ch
 
     def to_dict(self):
         """Serialize state for persistence."""

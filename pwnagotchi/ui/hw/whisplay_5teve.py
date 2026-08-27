@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import subprocess
+import time
 
 from PIL import Image, ImageDraw, ImageOps
 
@@ -37,6 +38,12 @@ ACCENT = (220, 60, 255)
 # orientation you look at, rotate into the panel's native portrait frame
 # only at the very end.
 VIEW_WIDTH, VIEW_HEIGHT = 280, 240
+
+# render() runs on every real state change (view.py's _refresh_handler, or
+# any on_state_change during active scanning) — IP and battery estimate
+# don't change fast enough to justify a fresh subprocess/file read every
+# single time, so both are throttled to this interval.
+_MESS_INTERVALL = 5.0
 
 
 def _rotation() -> int:
@@ -123,6 +130,11 @@ class Whisplay5teve(Whisplay):
         # Validate/cache once at startup, not on every render() call — see
         # _rotation()'s docstring.
         self._rotation_deg = _rotation()
+        # Throttle-Cache fuer IP/Akku, siehe _MESS_INTERVALL.
+        self._akku_gemessen = 0.0
+        self._akku_wert = None
+        self._ip_gemessen = 0.0
+        self._ip_wert = None
         # Setting self._layout['face'] does nothing: view.py builds the
         # face widget from config['ui']['faces']['position_x'/'position_y']
         # directly, not from the display's layout dict. Moving it off the
@@ -167,6 +179,20 @@ class Whisplay5teve(Whisplay):
         self._layout['ip'] = (130, 200)
         return self._layout
 
+    def _akku_gecacht(self):
+        jetzt = time.monotonic()
+        if jetzt - self._akku_gemessen >= _MESS_INTERVALL:
+            self._akku_wert = _akku_geschaetzt()
+            self._akku_gemessen = jetzt
+        return self._akku_wert
+
+    def _ip_gecacht(self):
+        jetzt = time.monotonic()
+        if jetzt - self._ip_gemessen >= _MESS_INTERVALL:
+            self._ip_wert = _ip_adresse()
+            self._ip_gemessen = jetzt
+        return self._ip_wert
+
     def render(self, canvas):
         # Akku/IP direkt auf denselben Mono-Canvas gezeichnet, auf dem
         # pwnagotchi selbst "5teve"/"PWND"/"AUTO" zeichnet - kein separater
@@ -174,10 +200,10 @@ class Whisplay5teve(Whisplay):
         # d.text() wie ueberall sonst, fill=255 wie pwnagotchi's eigenes
         # BLACK (view.py, kein invert konfiguriert).
         d = ImageDraw.Draw(canvas)
-        akku = _akku_geschaetzt()
+        akku = self._akku_gecacht()
         akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
         d.text(self._layout['akku'], akku_text, font=fonts.Small, fill=255)
-        ip = _ip_adresse()
+        ip = self._ip_gecacht()
         if ip:
             d.text(self._layout['ip'], ip, font=fonts.Small, fill=255)
 

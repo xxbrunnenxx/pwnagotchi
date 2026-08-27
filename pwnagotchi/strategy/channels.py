@@ -1,6 +1,5 @@
 """Channel selection strategy - core to agent behavior."""
 
-import random
 import logging
 import pwnagotchi.utils
 from .statistics import ChannelStatistics
@@ -34,7 +33,8 @@ class ChannelStrategy:
         self.reset_history = config.get("main", {}).get("reset_history", True)
         # fraction of extra_channels kept as pure random exploration; the
         # rest is drawn weighted toward channels with a known success score
-        self.explore_ratio = config.get("main", {}).get("channel_explore_ratio", 0.5)
+        explore_ratio = config.get("main", {}).get("channel_explore_ratio", 0.5)
+        self.explore_ratio = max(0.0, min(1.0, explore_ratio))
 
     def select_channels(self, agent, access_points):
         """
@@ -53,22 +53,20 @@ class ChannelStrategy:
             # discovering new territory), part weighted toward channels with
             # a known success score (epsilon-greedy bandit over chistos)
             n_extra = self.extra_channels
-            if len(self.stats.unscanned_channels) == 0:
+            if self.stats.unscanned_count() == 0:
                 self._repopulate_unscanned_channels(agent)
 
             n_random = round(n_extra * self.explore_ratio)
             n_weighted = n_extra - n_random
 
             for _ in range(n_random):
-                if len(self.stats.unscanned_channels):
-                    ch = random.choice(list(self.stats.unscanned_channels))
-                    self.stats.unscanned_channels.remove(ch)
+                ch = self.stats.pop_random_unscanned()
+                if ch is not None:
                     next_channels.append(ch)
 
             for _ in range(n_weighted):
-                if len(self.stats.unscanned_channels):
-                    ch = self._pick_weighted_channel()
-                    self.stats.unscanned_channels.remove(ch)
+                ch = self.stats.pop_weighted_unscanned()
+                if ch is not None:
                     next_channels.append(ch)
 
             # Update agent config
@@ -87,33 +85,26 @@ class ChannelStrategy:
             self.logger.error(f"Error selecting channels: {e}")
             return self.stats.active_channels
 
-    def _pick_weighted_channel(self):
-        """Pick one unscanned channel, weighted by its historical success score."""
-        pool = list(self.stats.unscanned_channels)
-        # small floor so unproven channels can still be picked occasionally
-        weights = [max(self.stats.channel_score(ch), 0.01) for ch in pool]
-        return random.choices(pool, weights=weights, k=1)[0]
-
     def _repopulate_unscanned_channels(self, agent):
         """Repopulate unscanned channel list from config or agent."""
         try:
             # Try restrict_channels first
             if self.restrict_channels:
                 self.logger.info("Repopulating from restrict_channels")
-                self.stats.unscanned_channels = self.restrict_channels.copy()
+                self.stats.set_unscanned_channels(self.restrict_channels)
             # Try agent's allowed channels
             elif hasattr(agent, "_allowed_channels"):
                 self.logger.info(f"Repopulating from allowed: {agent._allowed_channels}")
-                self.stats.unscanned_channels = agent._allowed_channels.copy()
+                self.stats.set_unscanned_channels(agent._allowed_channels)
             # Try agent's supported channels
             elif hasattr(agent, "_supported_channels"):
                 self.logger.info("Repopulating from supported")
-                self.stats.unscanned_channels = agent._supported_channels.copy()
+                self.stats.set_unscanned_channels(agent._supported_channels)
             # Fall back to all channels for interface
             else:
                 self.logger.info("Repopulating from interface channels")
                 iface = self.config.get("main", {}).get("iface", "wlan0")
-                self.stats.unscanned_channels = pwnagotchi.utils.iface_channels(iface)
+                self.stats.set_unscanned_channels(pwnagotchi.utils.iface_channels(iface))
 
         except Exception as e:
             self.logger.warning(f"Error repopulating unscanned channels: {e}")
@@ -159,11 +150,14 @@ class ChannelStrategy:
 
     def load_stats(self, path):
         """Load persisted channel statistics from disk, if present."""
-        status = pwnagotchi.utils.StatusFile(path, data_format="json")
-        if status.data:
-            retention_days = self.config.get("main", {}).get("stats_retention_days", 30)
-            self.stats.load_dict(status.data, retention_days=retention_days)
-            self.logger.info(f"Loaded channel statistics from {path}")
+        try:
+            status = pwnagotchi.utils.StatusFile(path, data_format="json")
+            if status.data:
+                retention_days = self.config.get("main", {}).get("stats_retention_days", 30)
+                self.stats.load_dict(status.data, retention_days=retention_days)
+                self.logger.info(f"Loaded channel statistics from {path}")
+        except Exception as e:
+            self.logger.warning(f"Error loading channel statistics: {e}")
 
     def save_stats(self, path):
         """Persist current channel statistics to disk."""

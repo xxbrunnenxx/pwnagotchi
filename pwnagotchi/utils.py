@@ -266,10 +266,10 @@ def load_config(args):
     elif config['ui']['display']['type'] in ('papirus', 'papi'):
         config['ui']['display']['type'] = 'papirus'
 
-    elif config['ui']['display']['type'] in 'oledhat':
+    elif config['ui']['display']['type'] == 'oledhat':
         config['ui']['display']['type'] = 'oledhat'
 
-    elif config['ui']['display']['type'] in 'lcdhat':
+    elif config['ui']['display']['type'] == 'lcdhat':
         config['ui']['display']['type'] = 'lcdhat'
 
     elif config['ui']['display']['type'] in ('dfrobot_1', 'df1'):
@@ -281,52 +281,52 @@ def load_config(args):
     elif config['ui']['display']['type'] in ('waveshare144lcd', 'ws_144', 'ws144', 'waveshare_144', 'waveshare144'):
         config['ui']['display']['type'] = 'waveshare144lcd'
 
-    elif config['ui']['display']['type'] in ('spotpear24inch'):
+    elif config['ui']['display']['type'] == 'spotpear24inch':
         config['ui']['display']['type'] = 'spotpear24inch'
 
-    elif config['ui']['display']['type'] in ('spotpear154lcd'):
+    elif config['ui']['display']['type'] == 'spotpear154lcd':
         config['ui']['display']['type'] = 'spotpear154lcd'
 
-    elif config['ui']['display']['type'] in ('displayhatmini'):
+    elif config['ui']['display']['type'] == 'displayhatmini':
         config['ui']['display']['type'] = 'displayhatmini'
 
-    elif config['ui']['display']['type'] in ('pirateaudio'):
+    elif config['ui']['display']['type'] == 'pirateaudio':
         config['ui']['display']['type'] = 'pirateaudio'
 
-    elif config['ui']['display']['type'] in ('gfxhat'):
+    elif config['ui']['display']['type'] == 'gfxhat':
         config['ui']['display']['type'] = 'gfxhat'
 
-    elif config['ui']['display']['type'] in ('pitft'):
+    elif config['ui']['display']['type'] == 'pitft':
         config['ui']['display']['type'] = 'pitft'
 
-    elif config['ui']['display']['type'] in ('argonpod'):
+    elif config['ui']['display']['type'] == 'argonpod':
         config['ui']['display']['type'] = 'argonpod'
 
-    elif config['ui']['display']['type'] in ('minipitft'):
+    elif config['ui']['display']['type'] == 'minipitft':
         config['ui']['display']['type'] = 'minipitft'
 
-    elif config['ui']['display']['type'] in ('minipitft2'):
+    elif config['ui']['display']['type'] == 'minipitft2':
         config['ui']['display']['type'] = 'minipitft2'
 
-    elif config['ui']['display']['type'] in ('tftbonnet'):
+    elif config['ui']['display']['type'] == 'tftbonnet':
         config['ui']['display']['type'] = 'tftbonnet'
 
-    elif config['ui']['display']['type'] in ('waveshareoledlcd'):
+    elif config['ui']['display']['type'] == 'waveshareoledlcd':
         config['ui']['display']['type'] = 'waveshareoledlcd'
 
-    elif config['ui']['display']['type'] in ('i2coled'):
+    elif config['ui']['display']['type'] == 'i2coled':
         config['ui']['display']['type'] = 'i2coled'
 
-    elif config['ui']['display']['type'] in ('waveshare35lcd'):
+    elif config['ui']['display']['type'] == 'waveshare35lcd':
         config['ui']['display']['type'] = 'waveshare35lcd'
 
-    elif config['ui']['display']['type'] in ('waveshareoledlcdvert'):
+    elif config['ui']['display']['type'] == 'waveshareoledlcdvert':
         config['ui']['display']['type'] = 'waveshareoledlcdvert'
 
-    elif config['ui']['display']['type'] in ('gamepi20'):
+    elif config['ui']['display']['type'] == 'gamepi20':
         config['ui']['display']['type'] = 'gamepi20'
 
-    elif config['ui']['display']['type'] in ('gamepi15'):
+    elif config['ui']['display']['type'] == 'gamepi15':
         config['ui']['display']['type'] = 'gamepi15'
 
     # E-INK DISPLAYS ------------------------------------------------------------------------
