@@ -8,6 +8,10 @@ def display_for(config):
         from pwnagotchi.ui.hw.whisplay import Whisplay
         return Whisplay(config)
 
+    elif config['ui']['display']['type'] == 'whisplay_bronco':
+        from pwnagotchi.ui.hw.whisplay_bronco import WhisplayBronco
+        return WhisplayBronco(config)
+
     elif config['ui']['display']['type'] == 'inkyv2':
         from pwnagotchi.ui.hw.inkyv2 import InkyV2
         return InkyV2(config)
