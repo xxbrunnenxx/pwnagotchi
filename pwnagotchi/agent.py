@@ -164,6 +164,10 @@ class Agent(Client, Automata, AsyncAdvertiser):
             logging.debug("error while getting current wifi channel: %s", e)
         return None
 
+    def next_epoch(self):
+        super().next_epoch()
+        self._strategy.on_epoch()
+
     def recon(self):
         recon_time = self._config['personality']['recon_time']
         max_inactive = self._config['personality']['max_inactive_scale']
@@ -202,6 +206,15 @@ class Agent(Client, Automata, AsyncAdvertiser):
 
     def get_access_points(self):
         whitelist = self._config['main']['whitelist']
+        # target_whitelist (BRONCO addition, opt-in): unlike `whitelist` above
+        # (a denylist - protects listed networks, attacks everything else),
+        # this is an ALLOWLIST - when non-empty, ONLY these networks are ever
+        # touched, everything else is ignored no matter what's in range.
+        # Mirrors barthal/deauth.py's ERLAUBTE_NETZE gate (same repo family,
+        # same owner, same legal boundary: unauthorized deauth against a
+        # network you don't own is a criminal offense, see StGB SS303b).
+        # Empty (default) -> no behavior change from stock.
+        target_whitelist = self._config['main'].get('target_whitelist', [])
         aps = []
         try:
             s = self.session()
@@ -212,6 +225,11 @@ class Agent(Client, Automata, AsyncAdvertiser):
                 if ap['encryption'] == '' or ap['encryption'] == 'OPEN':
                     continue
                 elif ap['hostname'] in whitelist or ap['mac'][:13].lower() in whitelist or ap['mac'].lower() in whitelist:
+                    continue
+                elif target_whitelist and not (
+                        ap['hostname'] in target_whitelist
+                        or ap['mac'][:13].lower() in target_whitelist
+                        or ap['mac'].lower() in target_whitelist):
                     continue
                 elif ap['channel'] not in self._supported_channels:
                     # a beacon can report any channel number it wants (seen
@@ -318,6 +336,7 @@ class Agent(Client, Automata, AsyncAdvertiser):
         pwnagotchi.restart(mode)
 
     def _save_recovery_data(self):
+        self._strategy.save_stats()
         logging.warning("writing recovery data to %s ...", RECOVERY_DATA_FILE)
         with open(RECOVERY_DATA_FILE, 'w') as fp:
             data = {

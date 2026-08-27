@@ -7,8 +7,15 @@ mon_stop_cmd = "/usr/bin/monstop"
 mon_max_blind_epochs = 5
 no_restart = false
 # Channel selection strategy (core infrastructure)
-extra_channels = 15  # Number of random unscanned channels to explore per epoch
+extra_channels = 15  # Number of unscanned channels to explore per epoch
 # restrict_channels = [1, 6, 11]  # Optional: limit scanning to specific channels
+channel_stats_file = "/etc/pwnagotchi/channel_stats.json"  # persisted per-channel success stats
+channel_explore_ratio = 0.5  # fraction of extra_channels kept pure random vs. weighted by past success
+stats_retention_days = 30  # drop known_aps entries not seen within this many days when saving
+# target_whitelist: ALLOWLIST (opposite of `whitelist` below) - when non-empty,
+# ONLY these networks (hostname, mac prefix, or full mac) are ever touched,
+# regardless of what else is in range. Empty by default = no behavior change.
+target_whitelist = []
 whitelist = [
     "EXAMPLE_NETWORK",
     "ANOTHER_EXAMPLE_NETWORK",
