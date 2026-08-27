@@ -20,41 +20,23 @@ from pwnagotchi.ui.hw.whisplay import Whisplay
 # (pwnagotchi/ui/view.py, `Image.new('1', ...)`) — there is no per-pixel
 # color in the canvas `render()` receives. Coloring happens once, here, at
 # the driver boundary: `render()` colorizes the finished mono canvas
-# (white -> ACCENT, black -> GROUND), adds a thin HUD frame, then hands the
-# result to the stock `Whisplay.render()` for the actual SPI transfer. None
-# of pwnagotchi's own Text/Rect/Line widgets need to change.
+# (white -> ACCENT, black -> GROUND), then hands the result to the stock
+# `Whisplay.render()` for the actual SPI transfer.
 #
-# Deliberately similar to barthal's Cyberdeck skin (same genre: dark HUD
-# panel, corner brackets, scanlines, monospace) but recognizably different
-# (magenta accent instead of cyan, own wordmark via `main.name` in
-# config.toml) — design vow from kraken-arche/gedaechtnis.md, 27.08.2026.
-
+# Deliberately plain (27.08.2026, owner call after a long debugging night
+# with the earlier decorated version — corner brackets/scanlines/dot-grid/
+# a separate post-colorize text layer for BAKED/IP): form follows function.
+# Every piece of info gets its own non-overlapping row, drawn the exact
+# same way (plain d.text() straight onto the mono canvas, same as
+# pwnagotchi's own widgets) — no separate drawing path for anything, so
+# there's nothing left that could behave differently between elements.
 GROUND = (8, 3, 14)
 ACCENT = (220, 60, 255)
-LINE = (40, 15, 55)
 
 # View-orientation dims (landscape) — same trick as barthal: draw in the
 # orientation you look at, rotate into the panel's native portrait frame
-# only at the very end. First real-hardware pass (27.08.2026, photo in
-# kraken-arche/gedaechtnis.md) confirmed the layout — no collisions, face
-# stayed hidden — but the panel looked flat/empty compared to barthal's
-# Cyberdeck skin. This pass adds the texture barthal has (scanlines, dot
-# grid) that was missing from the first cut.
+# only at the very end.
 VIEW_WIDTH, VIEW_HEIGHT = 280, 240
-
-# Precomputed once at import time, not per frame — same reasoning as
-# barthal's lcd_bild.py: the pattern never changes, no need to redraw it
-# on every render() call.
-_SCANLINES = Image.new("RGBA", (VIEW_WIDTH, VIEW_HEIGHT), (0, 0, 0, 0))
-_scanlines_draw = ImageDraw.Draw(_SCANLINES)
-for _y in range(0, VIEW_HEIGHT, 2):
-    _scanlines_draw.line([(0, _y), (VIEW_WIDTH, _y)], fill=(0, 0, 0, 28))
-
-_RASTER = Image.new("RGBA", (VIEW_WIDTH, VIEW_HEIGHT), (0, 0, 0, 0))
-_raster_draw = ImageDraw.Draw(_RASTER)
-for _x in range(0, VIEW_WIDTH, 10):
-    for _y in range(0, VIEW_HEIGHT, 10):
-        _raster_draw.point((_x, _y), fill=(220, 60, 255, 30))
 
 
 def _rotation() -> int:
@@ -134,36 +116,6 @@ def _ip_adresse(iface: str = "wlan0"):
     return treffer.group(1) if treffer else None
 
 
-def _kopfueber_kompensiert(zielbild, xy, text, font, fill):
-    """Zeichnet Text vorab um 180 Grad gedreht in ein kleines Hilfsbild und
-    fuegt es an `xy` ein - kompensiert einen nicht verstandenen Effekt, der
-    ausgerechnet die BAKED/IP-Textausgaben (nicht aber pwnagotchi's eigene
-    Widgets: 5teve, UP, PWND, AUTO) auf dem echten Geraet kopfueber
-    erscheinen laesst, obwohl exakt derselbe Rotations-/Farb-Code fuer alle
-    gilt. Empirisch ermittelt (27.08.2026, Fotobeleg neu2.jpg und
-    immernochnicht.jpg in kraken-arche/gedaechtnis.md), Ursache ungeklaert -
-    siehe Kommentar in render(). Analog zur Y-Koordinaten-Spiegelung dort:
-    Symptom kompensiert, nicht die Ursache behoben."""
-    bbox = font.getbbox(text)
-    breite = bbox[2] - bbox[0] + 2
-    hoehe = bbox[3] - bbox[1] + 2
-    hilfsbild = Image.new("RGBA", (breite, hoehe), (0, 0, 0, 0))
-    ImageDraw.Draw(hilfsbild).text((-bbox[0], -bbox[1]), text, font=font, fill=fill)
-    hilfsbild = hilfsbild.rotate(180)
-    zielbild.paste(hilfsbild, xy, hilfsbild)
-
-
-def _corner_brackets(d, width, height, length=14, thickness=2, margin=20):
-    for x, y, dx, dy in (
-        (margin, margin, 1, 1),
-        (width - margin, margin, -1, 1),
-        (margin, height - margin, 1, -1),
-        (width - margin, height - margin, -1, -1),
-    ):
-        d.line([(x, y), (x + dx * length, y)], fill=ACCENT, width=thickness)
-        d.line([(x, y), (x, y + dy * length)], fill=ACCENT, width=thickness)
-
-
 class Whisplay5teve(Whisplay):
     def __init__(self, config):
         super(Whisplay5teve, self).__init__(config)
@@ -174,9 +126,7 @@ class Whisplay5teve(Whisplay):
         # Setting self._layout['face'] does nothing: view.py builds the
         # face widget from config['ui']['faces']['position_x'/'position_y']
         # directly, not from the display's layout dict. Moving it off the
-        # 280x240 canvas is the only way to actually suppress it — 5teve's
-        # HUD has no room for pwnagotchi's ASCII mascot, it would overlap
-        # the channel/aps labels at y=34.
+        # 280x240 canvas is the only way to actually suppress it.
         config['ui']['faces']['position_x'] = -1000
         config['ui']['faces']['position_y'] = -1000
 
@@ -184,65 +134,51 @@ class Whisplay5teve(Whisplay):
         fonts.setup(10, 9, 10, 18, 20, 9)
         self._layout['width'] = VIEW_WIDTH
         self._layout['height'] = VIEW_HEIGHT
-        # No face — same choice barthal made for its infopanel; 5teve's
-        # HUD reads as a dashboard, not a mascot. `face` position is
-        # unused by pwnagotchi core when no face widget is added, but the
-        # base layout dict expects a value.
+        # No face — 5teve's HUD reads as a dashboard, not a mascot. `face`
+        # position is unused by pwnagotchi core when no face widget is
+        # added, but the base layout dict expects a value.
         self._layout['face'] = (0, 0)
-        self._layout['name'] = (38, 4)
-        self._layout['channel'] = (38, 34)
-        self._layout['aps'] = (90, 34)
-        self._layout['uptime'] = (200, 4)
-        self._layout['line1'] = [0, 26, VIEW_WIDTH, 26]
-        self._layout['line2'] = [0, 196, VIEW_WIDTH, 196]
+        # Sechs Zeilen, grosszuegig gestaffelt (240px Canvashoehe / 6 =
+        # 40px pro Zeile), damit nichts mehr ineinanderlaeuft (siehe
+        # 27.08.2026: BAKED/IP kollidierten vorher mit PWND/AUTO, weil
+        # beide praktisch dieselbe y-Koordinate hatten). Jede Zeile hat
+        # jetzt klar eigenen Raum, keine Linien/Texturen dazwischen.
+        self._layout['name'] = (4, 4)
+        self._layout['uptime'] = (180, 4)
+        self._layout['line1'] = [0, 0, 0, 0]  # kein sichtbarer Strich mehr
+        self._layout['channel'] = (4, 40)
+        self._layout['aps'] = (90, 40)
+        self._layout['status'] = {
+            'pos': (4, 76),
+            'font': fonts.status_font(fonts.Medium),
+            'max': 26,
+        }
+        self._layout['line2'] = [0, 0, 0, 0]
         self._layout['friend_face'] = (0, 92)
         self._layout['friend_name'] = (40, 94)
-        self._layout['shakes'] = (38, 210)
-        self._layout['mode'] = (200, 210)
-        self._layout['status'] = {
-            'pos': (38, 60),
-            'font': fonts.status_font(fonts.Medium),
-            'max': 24,
-        }
+        self._layout['shakes'] = (4, 160)
+        self._layout['mode'] = (180, 160)
+        self._layout['akku'] = (4, 200)
+        self._layout['ip'] = (120, 200)
         return self._layout
 
     def render(self, canvas):
-        colored = ImageOps.colorize(
-            canvas.convert('L'), black=GROUND, white=ACCENT
-        ).convert('RGBA')
-        # Raster first (under the text/brackets, dim enough to stay a
-        # texture and not a distraction), scanlines last (like a pane of
-        # glass over everything else) — same layering barthal uses.
-        colored = Image.alpha_composite(colored, _RASTER)
-        d = ImageDraw.Draw(colored)
-        _corner_brackets(d, VIEW_WIDTH, VIEW_HEIGHT)
-        # Y-Koordinaten empirisch an der Bildmitte gespiegelt (27.08.2026,
-        # spaete Sitzung). Belegfoto (kraken-arche/gedaechtnis.md, neu2.jpg
-        # vom echten Dienst, nicht vom Diagnoseskript): Kopfzeile/Fusszeile/
-        # Eckklammern sitzen exakt da, wo layout() sie hinlegt - nur diese
-        # zwei d.text()-Aufrufe erschienen oben/kopfueber statt unten,
-        # ziemlich genau bei (VIEW_HEIGHT - y) statt y. Ursache dafuer NICHT
-        # gefunden (Rotationsformel, MADCTL, STEVE_DREHUNG sind fuer alle
-        # Elemente identisch) - das hier behebt das Symptom, nicht die
-        # Ursache. Falls der Fehler in anderer Form wiederkommt (z.B. nach
-        # Layout-Aenderung), nochmal von vorn pruefen statt dieser Zeile
-        # blind vertrauen.
-        # Eigene Reihe unter shakes/mode (die liegen bei y=210) - naechster
-        # Fund nach der Rotations-/Positions-Korrektur (27.08.2026, gleiche
-        # Sitzung): Orientierung/Position stimmten, aber BAKED ragte in
-        # "PWND 0 (00)" hinein, weil beide praktisch auf derselben Zeile
-        # lagen (210 vs. 212). Jetzt eine echte zweite Zeile bei y=224,
-        # BAKED links (x=38, unter PWND) und IP rechts daneben (x=140) -
-        # beide Strings kurz genug, um nicht zu kollidieren, und y=224
-        # bleibt innerhalb der 240px Canvashoehe mit Rand zu den unteren
-        # Eckklammern (siehe _corner_brackets, margin=20).
+        # Akku/IP direkt auf denselben Mono-Canvas gezeichnet, auf dem
+        # pwnagotchi selbst "5teve"/"PWND"/"AUTO" zeichnet - kein separater
+        # Zeichenweg mehr, der sich anders verhalten koennte. Simple
+        # d.text() wie ueberall sonst, fill=255 wie pwnagotchi's eigenes
+        # BLACK (view.py, kein invert konfiguriert).
+        d = ImageDraw.Draw(canvas)
         akku = _akku_geschaetzt()
         akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
-        _kopfueber_kompensiert(colored, (38, VIEW_HEIGHT - 224), akku_text, fonts.Small, ACCENT)
+        d.text(self._layout['akku'], akku_text, font=fonts.Small, fill=255)
         ip = _ip_adresse()
         if ip:
-            _kopfueber_kompensiert(colored, (140, VIEW_HEIGHT - 224), ip, fonts.Small, ACCENT)
-        colored = Image.alpha_composite(colored, _SCANLINES).convert('RGB')
+            d.text(self._layout['ip'], ip, font=fonts.Small, fill=255)
+
+        colored = ImageOps.colorize(
+            canvas.convert('L'), black=GROUND, white=ACCENT
+        ).convert('RGB')
         rotated = colored.transpose(
             Image.ROTATE_270 if self._rotation_deg == 90 else Image.ROTATE_90
         )
