@@ -38,6 +38,13 @@ ACCENT = (220, 60, 255)
 # only at the very end.
 VIEW_WIDTH, VIEW_HEIGHT = 280, 240
 
+# Geteilte Position statt in zwei Dateien getrennt hartcodiert (Review-
+# Fund 04.09.2026): steve_taster.py nutzt dieselbe Stelle fuer sein
+# Menue-Textelement, weil das die einzige Flaeche ist, die schon fuer
+# variablen Text vorgesehen ist. Wer STATUS_POSITION hier aendert, aendert
+# es fuer beide - keine stille Divergenz mehr moeglich.
+STATUS_POSITION = (20, 76)
+
 
 def _rotation() -> int:
     """Degrees clockwise into the panel frame. Same env var as barthal
@@ -154,7 +161,7 @@ class Whisplay5teve(Whisplay):
         self._layout['channel'] = (20, 40)
         self._layout['aps'] = (100, 40)
         self._layout['status'] = {
-            'pos': (20, 76),
+            'pos': STATUS_POSITION,
             'font': fonts.status_font(fonts.Medium),
             'max': 24,
         }
