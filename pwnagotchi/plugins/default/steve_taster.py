@@ -119,13 +119,18 @@ class SteveTaster(plugins.Plugin):
                 self._status_vorher = ui.get('status')
             self._menu_war_offen = True
             if self._bestaetigung_ausstehend:
-                text = "BAD-ACTIVE?\nalles ausser Whitelist\n\nnochmal halten\nzum Bestaetigen"
+                # Ohne Leerzeilen: mit denen war der Block 87px hoch (y=78
+                # bis 165) und ueberlappte "PWND"/"AUTO" bei y=160 - Fund
+                # 04.09.2026 (Besitzer-Foto), nachgemessen mit
+                # multiline_textbbox statt nur geschaetzt. Kompakt bleibt
+                # der Block bei 35-61px, endet klar vor y=160.
+                text = "BAD-ACTIVE?\nalles ausser Whitelist\nnochmal halten zum Bestaetigen"
             else:
-                zeilen = ["MODUS WAEHLEN", ""]
+                zeilen = ["MODUS"]
                 for i, modus in enumerate(_MODI):
                     praefix = "> " if i == self._ausgewaehlt else "  "
                     zeilen.append(praefix + modus)
-                zeilen += ["", "kurz=weiter  lang=waehlen"]
+                zeilen.append("kurz=weiter lang=waehlen")
                 text = "\n".join(zeilen)
         # 'status' waere an derselben Stelle sonst gleichzeitig sichtbar
         # (dieselbe Flaeche, fuer genau sowas gedacht) - waehrend das Menue
