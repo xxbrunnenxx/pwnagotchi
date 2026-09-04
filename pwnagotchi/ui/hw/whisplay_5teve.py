@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageOps
 
 import pwnagotchi.ui.fonts as fonts
 from pwnagotchi.ui.hw.whisplay import Whisplay
@@ -24,12 +24,11 @@ from pwnagotchi.ui.hw.whisplay import Whisplay
 # `Whisplay.render()` for the actual SPI transfer.
 #
 # Deliberately plain (27.08.2026, owner call after a long debugging night
-# with the earlier decorated version — corner brackets/scanlines/dot-grid/
-# a separate post-colorize text layer for BAKED/IP): form follows function.
-# Every piece of info gets its own non-overlapping row, drawn the exact
-# same way (plain d.text() straight onto the mono canvas, same as
-# pwnagotchi's own widgets) — no separate drawing path for anything, so
-# there's nothing left that could behave differently between elements.
+# with the earlier decorated version — corner brackets/scanlines/dot-grid):
+# form follows function. Every piece of info gets its own non-overlapping
+# row. BAKED/IP are NOT drawn here (see 04.09.2026 root-cause comment in
+# render()) — they're real pwnagotchi widgets added by steve_taster.py,
+# so they go through the exact same pipeline as every other element.
 # Weiss statt Magenta (04.09.2026, Besitzer-Wunsch): bessere Lesbarkeit
 # auf Fotos, damit Text darauf zuverlaessig auswertbar ist.
 GROUND = (8, 3, 14)
@@ -40,12 +39,13 @@ ACCENT = (255, 255, 255)
 # only at the very end.
 VIEW_WIDTH, VIEW_HEIGHT = 280, 240
 
-# Geteilte Position statt in zwei Dateien getrennt hartcodiert (Review-
-# Fund 04.09.2026): steve_taster.py nutzt dieselbe Stelle fuer sein
-# Menue-Textelement, weil das die einzige Flaeche ist, die schon fuer
-# variablen Text vorgesehen ist. Wer STATUS_POSITION hier aendert, aendert
-# es fuer beide - keine stille Divergenz mehr moeglich.
+# Geteilte Positionen statt in zwei Dateien getrennt hartcodiert (Review-
+# Fund 04.09.2026): steve_taster.py nutzt dieselben Stellen fuer seine
+# Text-Elemente. Wer hier etwas aendert, aendert es fuer beide - keine
+# stille Divergenz mehr moeglich.
 STATUS_POSITION = (20, 76)
+AKKU_POSITION = (20, 200)
+IP_POSITION = (130, 200)
 
 
 def _rotation() -> int:
@@ -172,24 +172,24 @@ class Whisplay5teve(Whisplay):
         self._layout['friend_name'] = (40, 94)
         self._layout['shakes'] = (20, 160)
         self._layout['mode'] = (180, 160)
-        self._layout['akku'] = (20, 200)
-        self._layout['ip'] = (130, 200)
         return self._layout
 
     def render(self, canvas):
-        # Akku/IP direkt auf denselben Mono-Canvas gezeichnet, auf dem
-        # pwnagotchi selbst "5teve"/"PWND"/"AUTO" zeichnet - kein separater
-        # Zeichenweg mehr, der sich anders verhalten koennte. Simple
-        # d.text() wie ueberall sonst, fill=255 wie pwnagotchi's eigenes
-        # BLACK (view.py, kein invert konfiguriert).
-        d = ImageDraw.Draw(canvas)
-        akku = _akku_geschaetzt()
-        akku_text = f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a"
-        d.text(self._layout['akku'], akku_text, font=fonts.Small, fill=255)
-        ip = _ip_adresse()
-        if ip:
-            d.text(self._layout['ip'], ip, font=fonts.Small, fill=255)
-
+        # ROOT CAUSE gefunden (04.09.2026, nach mehreren Fehlversuchen):
+        # pwnagotchi/ui/display.py._on_view_rendered() dreht den Canvas
+        # bereits um 180 Grad (defaults.toml [ui.display] rotation=180,
+        # unabhaengig von unserem STEVE_DREHUNG!), BEVOR render() hier
+        # aufgerufen wird - alle von pwnagotchi selbst gezeichneten
+        # Widgets (auch unser 'steve_menu', siehe steve_taster.py) kriegen
+        # diese Drehung automatisch mit. Fruehers BAKED/IP wurden HIER in
+        # render() direkt auf denselben (schon gedrehten!) Canvas
+        # gezeichnet, mit Koordinaten fuer den UNgedrehten Rahmen - lief
+        # deshalb immer verkehrt, egal ob per Extra-Layer (erste Nacht)
+        # oder direkt auf den Mono-Canvas (zweiter Versuch). Endgueltiger
+        # Fix: BAKED/IP sind jetzt echte pwnagotchi-Widgets (siehe
+        # steve_taster.py on_ui_setup/on_ui_update, AKKU_POSITION/
+        # IP_POSITION), laufen also durch dieselbe Drehung wie alles
+        # andere. render() hier macht nur noch Farbe + eigene Drehung.
         colored = ImageOps.colorize(
             canvas.convert('L'), black=GROUND, white=ACCENT
         ).convert('RGB')

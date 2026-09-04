@@ -7,7 +7,10 @@ import pwnagotchi.plugins as plugins
 import pwnagotchi.ui.fonts as fonts
 from pwnagotchi.ui.components import Text
 from pwnagotchi.ui.view import BLACK
-from pwnagotchi.ui.hw.whisplay_5teve import STATUS_POSITION
+from pwnagotchi.ui.hw.whisplay_5teve import (
+    STATUS_POSITION, AKKU_POSITION, IP_POSITION,
+    _akku_geschaetzt, _ip_adresse,
+)
 
 # bettercap.service + pwngrid-peer.service gehoeren als Paar zusammen:
 # sobald bettercap erfolgreich mit pwnagotchi verbunden ist, ruft
@@ -80,16 +83,26 @@ class SteveTaster(plugins.Plugin):
         logging.info("[steve_taster] Taster verdrahtet - Ein-Knopf-Menue aktiv")
 
     def on_ui_setup(self, ui):
-        # Eigenes Element statt einen bestehenden Zeichenweg zweitzuverwenden
-        # oder gar (wie in der Nacht davor) einen eigenen Compositing-Layer
-        # zu bauen - laeuft ueber denselben Text-Widget-Mechanismus wie
-        # 'name'/'shakes'/etc., dieselbe Stelle wie 'status' (geteilte
-        # Konstante, siehe whisplay_5teve.STATUS_POSITION - Review-Fund
-        # 04.09.2026: vorher zwei getrennte Hardcodierungen, konnten
-        # stillschweigend auseinanderlaufen).
+        # Alle drei als echte pwnagotchi-Widgets - Root-Cause-Fund
+        # 04.09.2026: pwnagotchi/ui/display.py dreht den Canvas schon um
+        # 180 Grad (defaults.toml rotation=180, unabhaengig von unserem
+        # STEVE_DREHUNG), BEVOR whisplay_5teve.render() laeuft. Alles, was
+        # NICHT durch diesen normalen Widget-Weg geht (frueher: BAKED/IP
+        # direkt in render() gezeichnet), bekommt diese Drehung nicht mit
+        # und landet verkehrt - unabhaengig davon, ob per Extra-Layer oder
+        # direkt auf den Mono-Canvas gezeichnet wurde (beides ausprobiert,
+        # beides falsch). Deshalb: keine eigene Zeichenlogik mehr irgendwo,
+        # alles laeuft ueber add_element()/ui.set() wie 'name'/'shakes'/etc.
         ui.add_element('steve_menu', Text(value='', position=STATUS_POSITION, font=fonts.Small, color=BLACK))
+        ui.add_element('steve_akku', Text(value='', position=AKKU_POSITION, font=fonts.Small, color=BLACK))
+        ui.add_element('steve_ip', Text(value='', position=IP_POSITION, font=fonts.Small, color=BLACK))
 
     def on_ui_update(self, ui):
+        akku = _akku_geschaetzt()
+        ui.set('steve_akku', f"BAKED {akku:.0f}%" if akku is not None else "BAKED n/a")
+        ip = _ip_adresse()
+        ui.set('steve_ip', ip if ip else '')
+
         jetzt = time.time()
         with self._lock:
             if jetzt >= self._menu_offen_bis:
