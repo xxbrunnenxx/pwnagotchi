@@ -30,8 +30,10 @@ from pwnagotchi.ui.hw.whisplay import Whisplay
 # same way (plain d.text() straight onto the mono canvas, same as
 # pwnagotchi's own widgets) — no separate drawing path for anything, so
 # there's nothing left that could behave differently between elements.
+# Weiss statt Magenta (04.09.2026, Besitzer-Wunsch): bessere Lesbarkeit
+# auf Fotos, damit Text darauf zuverlaessig auswertbar ist.
 GROUND = (8, 3, 14)
-ACCENT = (220, 60, 255)
+ACCENT = (255, 255, 255)
 
 # View-orientation dims (landscape) — same trick as barthal: draw in the
 # orientation you look at, rotate into the panel's native portrait frame
